@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Market Monitor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:      #080c14;
+      --surface: #0d1220;
+      --card:    #0f1624;
+      --border:  #1a2235;
+      --border2: #212d42;
+      --accent:  #2563eb;
+      --accent2: #1d4ed8;
+      --green:   #16a34a;
+      --green2:  #22c55e;
+      --red:     #dc2626;
+      --red2:    #ef4444;
+      --text:    #e8edf5;
+      --text2:   #94a3b8;
+      --text3:   #4b5d75;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header-logo {
+      width: 28px; height: 28px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.5px;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+
+    .header-divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border2);
+    }
+
+    .header-sub {
+      font-size: 12px;
+      color: var(--text2);
+      font-weight: 400;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1px;
+    }
+
+    #clock {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.2px;
+    }
+
+    #last-update {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    /* ── Layout ── */
+    .main {
+      padding: 24px 32px;
+      display: grid;
+      gap: 16px;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── Tickers ── */
+    .tickers-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    @media (max-width: 1100px) { .tickers-grid { grid-template-columns: repeat(3,1fr); } }
+    @media (max-width: 700px)  { .tickers-grid { grid-template-columns: repeat(2,1fr); } }
+
+    .ticker-card {
+      background: var(--card);
+      padding: 22px 20px 18px;
+      position: relative;
+      cursor: default;
+      transition: background 0.15s;
+    }
+
+    .ticker-card:hover { background: #111827; }
+
+    .ticker-card .tc-top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .ticker-card .label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .ticker-card .name {
+      font-size: 12px;
+      color: var(--text2);
+      font-weight: 400;
+      margin-bottom: 14px;
+    }
+
+    .ticker-card .price {
+      font-size: 32px;
+      font-weight: 300;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      color: #fff;
+      letter-spacing: -1px;
+    }
+
+    .ticker-card .change {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ticker-card .stats {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .ticker-card .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .ticker-card .stat-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+
+    .ticker-card .stat-value {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .up   .badge { background: rgba(22,163,74,0.15); color: var(--green2); }
+    .down .badge { background: rgba(220,38,38,0.15); color: var(--red2); }
+    .flat .badge { background: rgba(148,163,184,0.1); color: var(--text2); }
+
+    .up   .abs { color: var(--green2); }
+    .down .abs { color: var(--red2); }
+    .flat .abs { color: var(--text2); }
+
+    .ticker-card .bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      width: 100%;
+    }
+
+    .ticker-card .bar span {
+      display: block;
+      height: 100%;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--border) 25%, #1e2d45 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.6s infinite;
+      border-radius: 3px;
+      display: inline-block;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* ── Chart + News layout ── */
+    .bottom-grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    /* ── Chart ── */
+    .chart-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    #tv-widget-container { height: 420px; }
+
+    /* ── Tactical ── */
+    .tactical-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .tactical-body {
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      max-height: 390px;
+    }
+
+    .tactical-signals {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .signal-chip {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .signal-chip.bull    { background: rgba(22,163,74,0.15);  color: var(--green2); }
+    .signal-chip.bear    { background: rgba(220,38,38,0.15);  color: var(--red2); }
+    .signal-chip.neutral { background: rgba(148,163,184,0.1); color: var(--text2); }
+
+    .tactical-text {
+      font-size: 13px;
+      line-height: 1.7;
+      color: var(--text2);
+    }
+
+    .tactical-text strong { color: var(--text); font-weight: 600; }
+
+    .tactical-meta {
+      font-size: 11px;
+      color: var(--text3);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .regime-badge {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .regime-badge.risk_on  { background: rgba(22,163,74,0.15);  color: var(--green2); }
+    .regime-badge.risk_off { background: rgba(220,38,38,0.15);  color: var(--red2); }
+    .regime-badge.neutral  { background: rgba(148,163,184,0.1); color: var(--text2); }
+
+    /* ── News ── */
+    .news-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 800px) { .news-grid { grid-template-columns: 1fr; } }
+
+    .news-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .news-list {
+      overflow-y: auto;
+      max-height: 340px;
+    }
+
+    .news-item {
+      padding: 11px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.12s;
+    }
+
+    .news-item:last-child { border-bottom: none; }
+    .news-item:hover { background: #111827; }
+
+    .news-item .headline {
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.5;
+      color: var(--text);
+    }
+
+    .news-item .meta {
+      font-size: 10.5px;
+      color: var(--text3);
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .news-item .source-badge {
+      background: var(--border2);
+      color: var(--text2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .news-loading, .news-error {
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--text3);
+      font-size: 12px;
+    }
+
+    .news-list::-webkit-scrollbar { width: 3px; }
+    .news-list::-webkit-scrollbar-track { background: transparent; }
+    .news-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-logo">M</div>
+    <h1>Market Monitor</h1>
+    <div class="header-divider"></div>
+    <span class="header-sub">Mercados Internacionales</span>
+  </div>
+  <div class="header-right">
+    <div id="clock"></div>
+    <div id="last-update"></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- Tickers -->
+  <div class="tickers-grid" id="tickers-grid"></div>
+
+  <!-- Chart + Tactical -->
+  <div class="bottom-grid" style="grid-template-columns: 1fr 340px; gap: 16px;">
+    <div class="chart-section">
+      <div class="section-header">
+        <span class="section-title">Gráfico de Análisis</span>
+      </div>
+      <div id="tv-widget-container"></div>
+    </div>
+
+    <div class="tactical-section">
+      <div class="section-header">
+        <span class="section-title">Lectura Técnica del Día</span>
+        <span id="tactical-date" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div class="tactical-body" id="tactical-body">
+        <div class="news-loading">Cargando análisis…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- News -->
+  <div class="news-grid">
+    <div class="news-section">
+      <div class="section-header">
+        <span class="section-title">Yahoo Finance</span>
+      </div>
+      <div class="news-list" id="yahoo-news"><div class="news-loading">Cargando…</div></div>
+    </div>
+    <div class="news-section">
+      <div class="section-header">
+        <span class="section-title">Seeking Alpha</span>
+      </div>
+      <div class="news-list" id="sa-news"><div class="news-loading">Cargando…</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TradingView library -->
+<script src="https://s3.tradingview.com/tv.js"></script>
+
+<script>
+// ────────────────────────────────────────────────
+// CONFIG
+// ────────────────────────────────────────────────
+const INSTRUMENTS = [
+  { symbol: 'GSPC',   name: 'S&P 500',         yf: '^GSPC', tv: 'FOREXCOM:SPXUSD', unit: '' },
+  { symbol: 'IXIC',   name: 'NASDAQ Composite', yf: '^IXIC', tv: 'FOREXCOM:NSXUSD', unit: '' },
+  { symbol: 'DJI',    name: 'Dow Jones',        yf: '^DJI',  tv: 'FOREXCOM:DJI',    unit: '' },
+  { symbol: 'CL=F',   name: 'WTI Crude Oil',   yf: 'CL=F',  tv: 'NYMEX:CL1!',   unit: '$' },
+  { symbol: 'VIX',    name: 'Volatility Index', yf: '^VIX', tv: 'CBOE:VIX',     unit: ''  },
+  { symbol: 'TNX',    name: 'Tesoro 10 Años',  yf: '^TNX',  tv: 'TVC:TNX',      unit: '%' },
+];
+
+// ────────────────────────────────────────────────
+// CLOCK
+// ────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('es-AR', { hour12: false }) + ' — ' +
+    now.toLocaleDateString('es-AR', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ────────────────────────────────────────────────
+// RENDER SKELETON CARDS
+// ────────────────────────────────────────────────
+const grid = document.getElementById('tickers-grid');
+
+INSTRUMENTS.forEach(inst => {
+  const card = document.createElement('div');
+  card.className = 'ticker-card';
+  card.id = 'card-' + inst.symbol.replace(/[^a-zA-Z0-9]/g, '_');
+  card.innerHTML = `
+    <div class="label">${inst.symbol}</div>
+    <div class="name">${inst.name}</div>
+    <div class="price"><span class="skeleton" style="width:110px;height:32px">&nbsp;</span></div>
+    <div class="change"><span class="skeleton" style="width:80px;height:12px;margin-top:8px">&nbsp;</span></div>
+    <div class="bar"><span style="background:var(--border2)"></span></div>
+  `;
+  grid.appendChild(card);
+});
+
+// ────────────────────────────────────────────────
+// TRADINGVIEW WIDGET
+// ────────────────────────────────────────────────
+let tvWidget = null;
+let activeSymbol = 'AMEX:SPY';
+
+function loadChart(tvSymbol) {
+  activeSymbol = tvSymbol;
+  document.getElementById('tv-widget-container').innerHTML = '';
+  tvWidget = new TradingView.widget({
+    container_id: 'tv-widget-container',
+    symbol: tvSymbol,
+    interval: 'D',
+    timezone: 'America/New_York',
+    theme: 'dark',
+    style: '1',
+    locale: 'es',
+    toolbar_bg: '#0f1624',
+    enable_publishing: false,
+    allow_symbol_change: true,
+    hide_side_toolbar: false,
+    studies: ['RSI@tv-studioes-script', 'MACD@tv-studioes-script'],
+    width: '100%',
+    height: 480,
+    hide_legend: false,
+    save_image: true,
+  });
+}
+
+loadChart(activeSymbol);
+
+// ────────────────────────────────────────────────
+// MARKET DATA — local API con fallback a Yahoo Finance
+// ────────────────────────────────────────────────
+function fmt(val, decimals = 2) {
+  if (val == null || isNaN(val)) return '—';
+  return val.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function updateCard(inst, quote) {
+  const id = 'card-' + inst.symbol.replace(/[^a-zA-Z0-9]/g, '_');
+  const card = document.getElementById(id);
+  if (!card || !quote || quote.error) return;
+
+  const price  = quote.price  ?? quote.regularMarketPrice;
+  const change = quote.change ?? quote.regularMarketChange;
+  const pct    = quote.change_pct ?? quote.regularMarketChangePercent;
+
+  const dir   = change > 0 ? 'up' : change < 0 ? 'down' : 'flat';
+  const sign  = change > 0 ? '+' : '';
+  const color = dir === 'up' ? 'var(--green)' : dir === 'down' ? 'var(--red)' : 'var(--muted)';
+
+  const barColor = dir === 'up' ? 'var(--green)' : dir === 'down' ? 'var(--red)' : 'var(--text3)';
+  const open   = quote.open   ?? quote.regularMarketOpen;
+  const prevCl = quote.previous_close ?? quote.regularMarketPreviousClose;
+  const vol    = quote.volume ?? quote.regularMarketVolume;
+
+  function fmtVol(v) {
+    if (!v) return '—';
+    if (v >= 1e9) return (v/1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return (v/1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return (v/1e3).toFixed(0) + 'K';
+    return v.toString();
+  }
+
+  card.innerHTML = `
+    <div class="label">${inst.symbol}</div>
+    <div class="name">${inst.name}</div>
+    <div class="price">${inst.unit}${fmt(price)}</div>
+    <div class="change ${dir}">
+      <span class="abs">${sign}${fmt(change)}</span>
+      <span class="badge">${sign}${fmt(pct)}%</span>
+    </div>
+    <div class="stats">
+      <div class="stat-item">
+        <span class="stat-label">Apertura</span>
+        <span class="stat-value">${open != null ? inst.unit + fmt(open) : '—'}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Cierre ant.</span>
+        <span class="stat-value">${prevCl != null ? inst.unit + fmt(prevCl) : '—'}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Volumen</span>
+        <span class="stat-value">${fmtVol(vol)}</span>
+      </div>
+    </div>
+    <div class="bar"><span style="background:${barColor};width:${Math.min(100, Math.abs(pct || 0) * 10 + 40)}%"></span></div>
+  `;
+}
+
+async function fetchQuoteYF(symbols) {
+  const syms = symbols.join(',');
+  const fields = 'regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketOpen,regularMarketPreviousClose,regularMarketVolume';
+  const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=${fields}`;
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+  const outer = await r.json();
+  const data  = JSON.parse(outer.contents);
+  return data?.quoteResponse?.result || [];
+}
+
+async function refreshData() {
+  try {
+    const quotes = await fetchQuoteYF(INSTRUMENTS.map(i => i.yf));
+    const map = {};
+    quotes.forEach(q => { map[q.symbol] = q; });
+    INSTRUMENTS.forEach(inst => {
+      const q = map[inst.yf];
+      if (q) updateCard(inst, {
+        price:          q.regularMarketPrice,
+        change:         q.regularMarketChange,
+        change_pct:     q.regularMarketChangePercent,
+        open:           q.regularMarketOpen,
+        previous_close: q.regularMarketPreviousClose,
+        volume:         q.regularMarketVolume,
+      });
+    });
+  } catch (e) {
+    console.warn('No se pudo obtener cotizaciones:', e);
+  }
+
+  document.getElementById('last-update').textContent =
+    'Actualizado: ' + new Date().toLocaleTimeString('es-AR', { hour12: false });
+}
+
+refreshData();
+setInterval(refreshData, 15000);
+
+// ────────────────────────────────────────────────
+// NEWS — local server API (/api/news/yf  /api/news/sa)
+// ────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1)  return 'ahora';
+  if (m < 60) return `hace ${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `hace ${h}h`;
+  return `hace ${Math.floor(h/24)}d`;
+}
+
+function renderNews(containerId, items, sourceName) {
+  const container = document.getElementById(containerId);
+  if (!items || !items.length) {
+    container.innerHTML = `<div class="news-error">Sin noticias disponibles en este momento.</div>`;
+    return;
+  }
+  container.innerHTML = items.map(item => `
+    <a class="news-item" href="${item.link || '#'}" target="_blank" rel="noopener">
+      <div class="headline">${item.title}</div>
+      <div class="meta">
+        <span class="source-badge">${sourceName}</span>
+        ${timeAgo(item.pub)}
+      </div>
+    </a>
+  `).join('');
+}
+
+async function fetchRSS(url) {
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+  const outer = await r.json();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(outer.contents, 'text/xml');
+  return Array.from(doc.querySelectorAll('item')).slice(0, 15).map(item => ({
+    title: item.querySelector('title')?.textContent?.trim() || '',
+    link:  item.querySelector('link')?.textContent?.trim() || '#',
+    pub:   item.querySelector('pubDate')?.textContent || '',
+  })).filter(i => i.title);
+}
+
+async function fetchSA() {
+  const url = 'https://seekingalpha.com/api/v3/news?filter%5Bcategory%5D=market-news%3A%3Atop-news&page%5Bsize%5D=20&page%5Bnumber%5D=1';
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+  const outer = await r.json();
+  const data = JSON.parse(outer.contents);
+  return (data?.data || []).map(item => ({
+    title: item.attributes?.title || '',
+    link:  item.links?.self ? `https://seekingalpha.com${item.links.self}` : '#',
+    pub:   item.attributes?.publishOn || '',
+  })).filter(i => i.title);
+}
+
+async function loadNews() {
+  // Yahoo Finance via RSS
+  try {
+    const items = await fetchRSS('https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EIXIC,%5EDJI&region=US&lang=en-US');
+    renderNews('yahoo-news', items, 'Yahoo Finance');
+  } catch { renderNews('yahoo-news', [], 'Yahoo Finance'); }
+
+  // Seeking Alpha via API directa
+  try {
+    const items = await fetchSA();
+    renderNews('sa-news', items, 'Seeking Alpha');
+  } catch {
+    try {
+      const items = await fetchRSS('https://seekingalpha.com/market-news/rss.xml');
+      renderNews('sa-news', items, 'Seeking Alpha');
+    } catch { renderNews('sa-news', [], 'Seeking Alpha'); }
+  }
+}
+
+loadNews();
+setInterval(loadNews, 5 * 60 * 1000);
+
+// ────────────────────────────────────────────────
+// LECTURA TÉCNICA DEL DÍA — generada en el browser
+// ────────────────────────────────────────────────
+async function buildTactical() {
+  // Usar los datos ya cargados de los instrumentos
+  const quotes = {};
+  try {
+    const all = await fetchQuoteYF(['^GSPC','^IXIC','^VIX','^TNX','CL=F']);
+    all.forEach(q => { quotes[q.symbol] = q; });
+  } catch { return; }
+
+  const sp  = quotes['^GSPC'];
+  const iq  = quotes['^IXIC'];
+  const vix = quotes['^VIX'];
+  const tsy = quotes['^TNX'];
+  const wti = quotes['CL=F'];
+
+  const sp_pct  = sp?.regularMarketChangePercent  || 0;
+  const iq_pct  = iq?.regularMarketChangePercent  || 0;
+  const vix_val = vix?.regularMarketPrice || 20;
+  const tsy_val = tsy?.regularMarketPrice || 4.5;
+  const wti_val = wti?.regularMarketPrice || 80;
+
+  const regime = (sp_pct > 0.5 && vix_val < 18) ? 'risk_on'
+               : (sp_pct < -0.5 || vix_val > 25) ? 'risk_off'
+               : 'neutral';
+
+  const hora = new Date().getHours();
+  const sesion = hora < 12 ? 'en la apertura de la sesión'
+               : hora < 16 ? 'en la mitad de la sesión'
+               : 'al cierre de la sesión';
+
+  const paras = [];
+
+  if (sp && iq) {
+    const sp_dir = sp_pct > 0 ? 'avanza' : 'retrocede';
+    const iq_dir = iq_pct > 0 ? 'sube' : 'cae';
+    const mag    = Math.abs(sp_pct) > 1 ? 'con fuerza' : Math.abs(sp_pct) > 0.4 ? 'moderadamente' : 'con cautela';
+    let p = `Los principales índices de Wall Street operan ${mag} ${sesion}. El <strong>S&P 500</strong> ${sp_dir} <strong>${sp_pct > 0 ? '+' : ''}${sp_pct.toFixed(2)}%</strong> y el <strong>NASDAQ</strong> ${iq_dir} <strong>${iq_pct > 0 ? '+' : ''}${iq_pct.toFixed(2)}%</strong>, `;
+    p += Math.abs(sp_pct - iq_pct) > 0.5
+      ? (iq_pct > sp_pct ? 'reflejando una rotación favorable hacia el sector tecnológico.' : 'evidenciando una rotación hacia sectores más defensivos.')
+      : 'en una jornada de movimiento relativamente uniforme entre sectores.';
+    paras.push(p);
+  }
+
+  if (vix) {
+    paras.push(vix_val < 15
+      ? `El <strong>VIX en ${vix_val.toFixed(1)}</strong> indica un mercado en modo de complacencia, con inversores posicionados con baja cobertura. Este nivel históricamente precede períodos de mayor volatilidad, por lo que recomendamos mantener coberturas parciales en cartera.`
+      : vix_val < 20
+      ? `La volatilidad implícita se mantiene controlada, con el <strong>VIX en ${vix_val.toFixed(1)}</strong>. El mercado no está descontando riesgo de cola significativo en el corto plazo, lo que brinda un entorno constructivo para posiciones en renta variable.`
+      : vix_val < 28
+      ? `El <strong>VIX en ${vix_val.toFixed(1)}</strong> refleja una volatilidad elevada que requiere atención. Los inversores están pagando una prima significativa por protección, señal de que el mercado percibe riesgos vigentes en el horizonte inmediato.`
+      : `El <strong>VIX en ${vix_val.toFixed(1)}</strong> se ubica en zona de estrés. Niveles superiores a 28 históricamente han marcado puntos de entrada interesantes para inversores de largo plazo con tolerancia al riesgo.`);
+  }
+
+  const rateOil = [];
+  if (tsy) rateOil.push(tsy_val > 4.5
+    ? `La <strong>tasa del Tesoro a 10 años en ${tsy_val.toFixed(2)}%</strong> mantiene presión sobre las valuaciones de compañías de growth y tecnología, dado que encarece el costo de descuento de flujos futuros.`
+    : `El <strong>Tesoro a 10 años rinde ${tsy_val.toFixed(2)}%</strong>, un nivel que el mercado incorpora como razonable dado el contexto de política monetaria. La evolución de esta tasa seguirá siendo el ancla para la valuación de activos de riesgo.`);
+  if (wti) rateOil.push(wti_val > 90
+    ? `El <strong>WTI a USD ${wti_val.toFixed(1)}</strong> agrega presión inflacionaria, un factor que la Fed deberá ponderar en sus próximas decisiones de política monetaria.`
+    : `El <strong>petróleo WTI opera en USD ${wti_val.toFixed(1)}</strong>, en un rango que no compromete significativamente las expectativas de inflación.`);
+  if (rateOil.length) paras.push(rateOil.join(' '));
+
+  paras.push(regime === 'risk_on'
+    ? 'En este entorno, <strong>mantenemos una postura constructiva en renta variable</strong>. Favorecemos exposición a sectores de crecimiento con fundamentos sólidos, particularmente tecnología y consumo discrecional. Recomendamos aprovechar la baja volatilidad para construir posiciones gradualmente.'
+    : regime === 'risk_off'
+    ? 'Ante el deterioro del sentimiento, <strong>recomendamos reducir exposición a activos de riesgo</strong> y rotar hacia posiciones defensivas. Sectores como utilities, consumo básico y salud ofrecen refugio en este contexto. Mantenemos liquidez táctica ante posibles oportunidades de reingreso.'
+    : 'En un entorno de señales mixtas, <strong>adoptamos un posicionamiento selectivo y balanceado</strong>. Priorizamos calidad sobre momentum, con preferencia por compañías con flujo de caja predecible y bajo apalancamiento. La diversificación sectorial sigue siendo clave para gestionar el riesgo.');
+
+  const text = paras.map(p => `<p style="margin-bottom:10px">${p}</p>`).join('');
+
+  const signals = [
+    sp  && { text: `S&P ${sp_pct > 0 ? '+' : ''}${sp_pct.toFixed(2)}%`,    type: sp_pct > 0 ? 'bull' : 'bear' },
+    iq  && { text: `NASDAQ ${iq_pct > 0 ? '+' : ''}${iq_pct.toFixed(2)}%`, type: iq_pct > 0 ? 'bull' : 'bear' },
+    vix && { text: `VIX ${vix_val.toFixed(1)}`,   type: vix_val < 20 ? 'neutral' : 'bear' },
+    tsy && { text: `UST10Y ${tsy_val.toFixed(2)}%`, type: tsy_val > 4.5 ? 'bear' : 'neutral' },
+    wti && { text: `WTI ${wti_val.toFixed(1)}`,   type: wti_val > 90 ? 'bear' : 'neutral' },
+  ].filter(Boolean);
+
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const now = new Date();
+  const dateStr = `${now.getDate()} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
+  const timeStr = now.toLocaleTimeString('es-AR', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  const regimeLabel = { risk_on: 'Risk On', risk_off: 'Risk Off', neutral: 'Neutral' };
+
+  document.getElementById('tactical-date').textContent = dateStr;
+  document.getElementById('tactical-body').innerHTML = `
+    <div class="tactical-signals">${signals.map(s => `<span class="signal-chip ${s.type}">${s.text}</span>`).join('')}</div>
+    <div class="tactical-text">${text}</div>
+    <div class="tactical-meta">
+      <span class="regime-badge ${regime}">${regimeLabel[regime]}</span>
+      Actualizado ${timeStr}
+    </div>
+  `;
+}
+
+buildTactical();
+setInterval(buildTactical, 10 * 60 * 1000);
+</script>
+</body>
+</html>
