@@ -613,63 +613,47 @@ function updateCard(inst, quote) {
   `;
 }
 
-const PROXIES = [
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-];
+async function fetchViaProxy(url) {
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+  const outer = await r.json();
+  const raw = outer.contents;
+  return typeof raw === 'string' ? JSON.parse(raw) : raw;
+}
 
-async function fetchWithProxy(url) {
-  // Try direct first
-  try {
-    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
-    if (r.ok) {
-      const text = await r.text();
-      return JSON.parse(text);
-    }
-  } catch {}
-
-  // Try each proxy
-  for (const makeProxy of PROXIES) {
-    try {
-      const r = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
-      const outer = await r.json();
-      // allorigins / codetabs wrap in {contents:...}, corsproxy returns raw
-      const raw = outer.contents ?? outer;
-      return typeof raw === 'string' ? JSON.parse(raw) : raw;
-    } catch {}
-  }
-  throw new Error('All proxies failed');
+async function fetchOneQuote(inst) {
+  const url = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(inst.yf)}?interval=1d&range=1d`;
+  const data = await fetchViaProxy(url);
+  const result = data?.chart?.result?.[0];
+  if (!result) throw new Error('no data');
+  const m = result.meta;
+  const prev = m.chartPreviousClose || m.previousClose;
+  const price = m.regularMarketPrice;
+  const change = price - prev;
+  const change_pct = prev ? (change / prev) * 100 : 0;
+  return {
+    price,
+    change,
+    change_pct,
+    open:           m.regularMarketDayHigh ? result.indicators?.quote?.[0]?.open?.[0] ?? price : price,
+    previous_close: prev,
+    volume:         m.regularMarketVolume,
+  };
 }
 
 async function fetchQuoteYF(symbols) {
-  const syms = symbols.join(',');
-  const fields = 'regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketOpen,regularMarketPreviousClose,regularMarketVolume';
-  const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=${fields}`;
-  const data = await fetchWithProxy(url);
-  return data?.quoteResponse?.result || [];
+  // kept for tactical reading compatibility
+  const results = await Promise.allSettled(
+    INSTRUMENTS.filter(i => symbols.includes(i.yf)).map(i => fetchOneQuote(i).then(q => ({ ...q, symbol: i.yf })))
+  );
+  return results.filter(r => r.status === 'fulfilled').map(r => ({ ...r.value, symbol: r.value.symbol }));
 }
 
 async function refreshData() {
-  try {
-    const quotes = await fetchQuoteYF(INSTRUMENTS.map(i => i.yf));
-    const map = {};
-    quotes.forEach(q => { map[q.symbol] = q; });
-    INSTRUMENTS.forEach(inst => {
-      const q = map[inst.yf];
-      if (q) updateCard(inst, {
-        price:          q.regularMarketPrice,
-        change:         q.regularMarketChange,
-        change_pct:     q.regularMarketChangePercent,
-        open:           q.regularMarketOpen,
-        previous_close: q.regularMarketPreviousClose,
-        volume:         q.regularMarketVolume,
-      });
-    });
-  } catch (e) {
-    console.warn('No se pudo obtener cotizaciones:', e);
-  }
-
+  const results = await Promise.allSettled(INSTRUMENTS.map(inst => fetchOneQuote(inst)));
+  results.forEach((res, i) => {
+    if (res.status === 'fulfilled') updateCard(INSTRUMENTS[i], res.value);
+  });
   document.getElementById('last-update').textContent =
     'Actualizado: ' + new Date().toLocaleTimeString('es-AR', { hour12: false });
 }
@@ -709,16 +693,11 @@ function renderNews(containerId, items, sourceName) {
 }
 
 async function fetchRSS(url) {
-  let xml = null;
-  for (const makeProxy of PROXIES) {
-    try {
-      const r = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
-      const outer = await r.json();
-      xml = outer.contents ?? outer;
-      if (xml && typeof xml === 'string') break;
-    } catch {}
-  }
-  if (!xml) throw new Error('RSS fetch failed');
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
+  const outer = await r.json();
+  const xml = outer.contents;
+  if (!xml) throw new Error('empty RSS');
   const parser = new DOMParser();
   const doc = parser.parseFromString(xml, 'text/xml');
   return Array.from(doc.querySelectorAll('item')).slice(0, 15).map(item => ({
@@ -730,7 +709,7 @@ async function fetchRSS(url) {
 
 async function fetchSA() {
   const url = 'https://seekingalpha.com/api/v3/news?filter%5Bcategory%5D=market-news%3A%3Atop-news&page%5Bsize%5D=20&page%5Bnumber%5D=1';
-  const data = await fetchWithProxy(url);
+  const data = await fetchViaProxy(url);
   return (data?.data || []).map(item => ({
     title: item.attributes?.title || '',
     link:  item.links?.self ? `https://seekingalpha.com${item.links.self}` : '#',
@@ -767,8 +746,11 @@ async function buildTactical() {
   // Usar los datos ya cargados de los instrumentos
   const quotes = {};
   try {
-    const all = await fetchQuoteYF(['^GSPC', '^IXIC', '^VIX', '^TNX', 'CL=F']);
-    all.forEach(q => { quotes[q.symbol] = q; });
+    const tacticalInsts = [
+      { yf: '^GSPC' }, { yf: '^IXIC' }, { yf: '^VIX' }, { yf: '^TNX' }, { yf: 'CL=F' }
+    ];
+    const results = await Promise.allSettled(tacticalInsts.map(i => fetchOneQuote(i).then(q => ({ ...q, symbol: i.yf }))));
+    results.forEach(r => { if (r.status === 'fulfilled') quotes[r.value.symbol] = r.value; });
   } catch { return; }
 
   const sp  = quotes['^GSPC'];
@@ -777,11 +759,11 @@ async function buildTactical() {
   const tsy = quotes['^TNX'];
   const wti = quotes['CL=F'];
 
-  const sp_pct  = sp?.regularMarketChangePercent  || 0;
-  const iq_pct  = iq?.regularMarketChangePercent  || 0;
-  const vix_val = vix?.regularMarketPrice || 20;
-  const tsy_val = tsy?.regularMarketPrice || 4.5;
-  const wti_val = wti?.regularMarketPrice || 80;
+  const sp_pct  = sp?.change_pct  || 0;
+  const iq_pct  = iq?.change_pct  || 0;
+  const vix_val = vix?.price || 20;
+  const tsy_val = tsy?.price || 4.5;
+  const wti_val = wti?.price || 80;
 
   const regime = (sp_pct > 0.5 && vix_val < 18) ? 'risk_on'
                : (sp_pct < -0.5 || vix_val > 25) ? 'risk_off'
