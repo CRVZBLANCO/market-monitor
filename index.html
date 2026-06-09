@@ -613,14 +613,40 @@ function updateCard(inst, quote) {
   `;
 }
 
+const PROXIES = [
+  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+
+async function fetchWithProxy(url) {
+  // Try direct first
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const text = await r.text();
+      return JSON.parse(text);
+    }
+  } catch {}
+
+  // Try each proxy
+  for (const makeProxy of PROXIES) {
+    try {
+      const r = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
+      const outer = await r.json();
+      // allorigins / codetabs wrap in {contents:...}, corsproxy returns raw
+      const raw = outer.contents ?? outer;
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch {}
+  }
+  throw new Error('All proxies failed');
+}
+
 async function fetchQuoteYF(symbols) {
   const syms = symbols.join(',');
   const fields = 'regularMarketPrice,regularMarketChange,regularMarketChangePercent,regularMarketOpen,regularMarketPreviousClose,regularMarketVolume';
   const url  = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(syms)}&fields=${fields}`;
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
-  const outer = await r.json();
-  const data  = JSON.parse(outer.contents);
+  const data = await fetchWithProxy(url);
   return data?.quoteResponse?.result || [];
 }
 
@@ -683,11 +709,18 @@ function renderNews(containerId, items, sourceName) {
 }
 
 async function fetchRSS(url) {
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
-  const outer = await r.json();
+  let xml = null;
+  for (const makeProxy of PROXIES) {
+    try {
+      const r = await fetch(makeProxy(url), { signal: AbortSignal.timeout(8000) });
+      const outer = await r.json();
+      xml = outer.contents ?? outer;
+      if (xml && typeof xml === 'string') break;
+    } catch {}
+  }
+  if (!xml) throw new Error('RSS fetch failed');
   const parser = new DOMParser();
-  const doc = parser.parseFromString(outer.contents, 'text/xml');
+  const doc = parser.parseFromString(xml, 'text/xml');
   return Array.from(doc.querySelectorAll('item')).slice(0, 15).map(item => ({
     title: item.querySelector('title')?.textContent?.trim() || '',
     link:  item.querySelector('link')?.textContent?.trim() || '#',
@@ -697,10 +730,7 @@ async function fetchRSS(url) {
 
 async function fetchSA() {
   const url = 'https://seekingalpha.com/api/v3/news?filter%5Bcategory%5D=market-news%3A%3Atop-news&page%5Bsize%5D=20&page%5Bnumber%5D=1';
-  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-  const r = await fetch(proxy, { signal: AbortSignal.timeout(10000) });
-  const outer = await r.json();
-  const data = JSON.parse(outer.contents);
+  const data = await fetchWithProxy(url);
   return (data?.data || []).map(item => ({
     title: item.attributes?.title || '',
     link:  item.links?.self ? `https://seekingalpha.com${item.links.self}` : '#',
@@ -737,7 +767,7 @@ async function buildTactical() {
   // Usar los datos ya cargados de los instrumentos
   const quotes = {};
   try {
-    const all = await fetchQuoteYF(['^GSPC','^IXIC','^VIX','^TNX','CL=F']);
+    const all = await fetchQuoteYF(['^GSPC', '^IXIC', '^VIX', '^TNX', 'CL=F']);
     all.forEach(q => { quotes[q.symbol] = q; });
   } catch { return; }
 
